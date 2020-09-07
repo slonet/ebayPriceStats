@@ -48,7 +48,8 @@ url_sold_mod = "&_sacat=0&rt=nc&LH_Sold=1&LH_Complete=1"
 url_n_results = "&_ipg=100" # Pre-set to 100 items per page
 
 
-
+### getPage(url) returns the raw HTML from an address.
+#
 def getPage(url):
 	try:
 		with closing(get(url, stream=True)) as resp:
@@ -62,6 +63,8 @@ def getPage(url):
 		return None
 
 
+### isGoodResp(resp) checks the response of the web server for successful query or failure
+#
 def isGoodResp(resp):
 	content_type = resp.headers['Content-Type'].lower()
 	return (resp.status_code == 200
@@ -69,36 +72,27 @@ def isGoodResp(resp):
 			and content_type.find('html') > -1)
 
 
+### log_error(e) generic error logging function
+#
 def log_error(e):
 	fid = open('log.txt', 'w')
 	fid.write(e)
 	fid.close()
 
 
+### dumpData(content, file_name) takes generic data, converts to a string and writes it
+# into the specified file.
+#
 def dumpData(content, file_name):
 	data = str(content)
 	open(file_name, 'w').write(data)
 
 
-def getResultPages(keyword):
-	n_pages = 1
-
-	prev_top_res = parseTitle(extractItems(getPage(makeUrl(keyword,0,1)))[0])
-
-	while True:
-		n_pages += 1
-		next_top_res = parseTitle(extractItems(getPage(makeUrl(keyword,0,n_pages)))[0])
-
-		if next_top_res == prev_top_res:
-			n_pages -= 1
-			break
-
-		prev_top_res = next_top_res
-
-	return n_pages
-
-
-def extractItems(content):
+### getItems(content) takes the raw HTML data and separates it into ebay item classes.
+# It returns a list of items it was able to parse from the raw page data. The items are
+# formatted as strings and still raw data.
+#
+def getItems(content):
 	content = str(content)
 
 	rslt_start = content.find(results_start)
@@ -111,14 +105,20 @@ def extractItems(content):
 	return raw_items
 
 
-def parseTitle(raw_item):
+### getTitle(raw_item) takes a raw item parsed out of a results page and parses the item
+# title. The item title is returned as a string.
+#
+def getTitle(raw_item):
 	title = raw_item.split(title_start)[1]
 	title = title[0:title.find(title_end)]
 
 	return title
 
 
-def parseCond(raw_item):
+### getCond(raw_item) takes a raw item parsed out of a results page and parses the item
+# condition. The item condition is returned as a string.
+#
+def getCond(raw_item):
 	try:
 		cond = raw_item.split(cond_start)[1]
 		cond = cond[0:cond.find(cond_end)]
@@ -132,7 +132,10 @@ def parseCond(raw_item):
 	return cond
 
 
-def parseAuctType(raw_item):
+### getAuctType(raw_item) takes a raw item parsed out of a results page and parses the item
+# auction type. The item auction type is returned as a string.
+#
+def getAuctType(raw_item):
 	try:
 		auctType = raw_item.split(auct_start)[1]
 		auctType = auctType[0:auctType.find(auct_end)]
@@ -147,7 +150,10 @@ def parseAuctType(raw_item):
 	return auctType
 
 
-def parsePrice(raw_item):
+### getPrice(raw_item) takes a raw item parsed out of a results page and parses the item
+# price. The item price is returned as a float.
+#
+def getPrice(raw_item):
 	try: # this should work for an active listing
 		price_str = raw_item.split(price_start)[1]
 		price_str = price_str[0:price_str.find(price_end)]
@@ -161,7 +167,11 @@ def parsePrice(raw_item):
 	return price
 
 
-def parseShipCost(raw_item):
+### getShipCost(raw_item) takes a raw item parsed out of a results page and parses the item
+# shipping cost. The item shipping cost is returned as a float. If the item has free shipping
+# the shipping cost returned is 0.0
+#
+def getShipCost(raw_item):
 	try:
 		ship_cost_str = raw_item.split(ship_cost_start)[1]
 		ship_cost_str = ship_cost_str[0:ship_cost_str.find(ship_cost_end)]
@@ -173,7 +183,10 @@ def parseShipCost(raw_item):
 	return ship_cost
 
 
-def parseItems(raw_items):
+### getParameters(raw_items) takes the list of raw items parsed from a reults page, iterates through
+# the list, and gathers all parameters for all items on the page. Each item has a dictionary of paramters.
+#
+def getParameters(raw_items):
 	N = len(raw_items)
 
 	items = []
@@ -188,17 +201,20 @@ def parseItems(raw_items):
 			'ShippingCost': -1.0,
 		}
 
-		item['Title'] = parseTitle(raw_items[i])
-		item['Condition'] = parseCond(raw_items[i])
-		item['AuctionType'] = parseAuctType(raw_items[i])
-		item['Price'] = parsePrice(raw_items[i])
-		item['ShippingCost'] = parseShipCost(raw_items[i])
+		item['Title'] = getTitle(raw_items[i])
+		item['Condition'] = getCond(raw_items[i])
+		item['AuctionType'] = getAuctType(raw_items[i])
+		item['Price'] = getPrice(raw_items[i])
+		item['ShippingCost'] = getShipCost(raw_items[i])
 
 		items.append(item)
 
 	return items
 
 
+### makeUrl(keyword, sold, page_no) takes a keyword, a set of search filters, and the desired results page
+# it generates a valid eBay URL that can be used to grab the desired page data. The URL is returned as a string.
+#
 def makeUrl(keyword, sold, page_no):
 	# replace spaces in keyword with '+'
 	url = ''
@@ -213,25 +229,45 @@ def makeUrl(keyword, sold, page_no):
 
 	return url
 
+
+### getResultPages(keyword) takes a keyword and collects all the unique results pages for the keyword.
+# 0. Set the n_pages counter to 1
+# 1. Get the 1st page and store it in the pages list
+# 2. Get the 1st result from the 1st page and store it in prev res
+# 3. Begin the loop
+# 4. Increment the n_pages counter
+# 5. Get the next page and store it in a temporary variable
+# 6. Get the top result from the next page
+# 7. Compare the prev result to the next result
+# 8. If they are equal: break from the loop
+# 9. If they are not equal append the next page temporary variable to the pages list
+# 10. Repeat loop
+
+def getResultPages(keyword):
+
+
+	return [n_pages, raw_pages]
+
+
 ### Main script
 
-#url = makeUrl(keyword, 0, 1)
-#content = getPage(url)
+url = makeUrl(keyword, 0, 1)
+content = getPage(url)
 
-#dumpData(content, 'paginationDump.html')
-
-#raw_items = extractItems(content)
-#items = parseItems(raw_items)
-
-#print(len(items))
-#print('\n' + url)
-
-n_pages = getResultPages(keyword)
-print(n_pages)
 
 ### DEV NOTES
 # Left off at getting the total number of unique result pages. Realized it makes more
 # sense to grab the page contents during the process and return all the unique pages.
+#
+### Data Hierarchy
+#
+# Keyword:
+# 	Results Pages
+#		Results Page
+#			Items
+#				Item
+#					Item Parameters
+#						Parameter
 #
 # TODO:
 # Get all unique results pages in one operation.
