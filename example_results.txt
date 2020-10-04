@@ -1,0 +1,1 @@
+{'Title': 'Texas-Instruments-TI-83-Plus-Graphing-Calculator-Excellent-Condition', 'Condition': 'Pre-Owned', 'AuctionType': 'Buy It Now', 'Price': 44.99, 'ShippingCost': 0.0}

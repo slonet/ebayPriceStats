@@ -1,0 +1,44 @@
+### Key items and identifying strings
+
+### Results Class
+
+All the keyword search results are in the class <ul class="srp-results srp-list clearfix"> which is terminated with </ul>
+
+START = "<ul class="srp-results srp-list clearfix">"
+END = "</ul>"
+
+### Item Class
+
+Each item is in a class <li class="s-item ... </li>
+All of the relevant item parameters can be pulled from that class.
+
+### Item Name
+
+href=https://www.ebay.com/itm/"ITEM NAME"/174389560516?hash=item289a6d84c4:g:
+
+START = "href=https://www.ebay.com/itm/"
+END = "/"
+
+### Item Price
+
+class=s-item__price>$75.00</span>
+
+START = "class=s-item__price>$"
+END = "</span>"
+
+### Item Condition
+
+class=SECONDARY_INFO>Pre-Owned</span>
+
+START = "class=SECONDARY_INFO>"
+END = "</span>"
+
+### Auction Type
+
+class=s-item__purchase-options-with-icon aria-label>Buy It Now</span>
+
+START = "class=s-item__purchase-options-with-icon aria-label>"
+END = "</span>"
+
+### Shipping
+

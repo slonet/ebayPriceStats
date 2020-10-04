@@ -9,6 +9,7 @@ import sys
 from requests import get
 from requests.exceptions import RequestException
 from contextlib import closing
+from matplotlib import pyplot as plt
 
 # Parse command line arguments
 keyword = str(sys.argv[1])
@@ -33,10 +34,10 @@ bid_start = "s-item__bidCount\">"
 bid_stop = " bids</span>"
 
 price_start = "class=s-item__price>$"
-price_end = "</span>"
+price_end = "<"
 
 sold_price_start = ">$"
-sold_price_end = "</span>"
+sold_price_end = "<"
 
 ship_cost_start = "s-item__logisticsCost\">+$"
 ship_cost_end = " shipping</span>"
@@ -189,11 +190,11 @@ def getShipCost(raw_item):
 def getParameters(raw_items):
 	N = len(raw_items)
 
-	items = []
+	parameters = []
 
 	for i in range(N):
 
-		item = {
+		param = {
 			'Title': '',
 			'Condition': '',
 			'AuctionType': '',
@@ -201,15 +202,15 @@ def getParameters(raw_items):
 			'ShippingCost': -1.0,
 		}
 
-		item['Title'] = getTitle(raw_items[i])
-		item['Condition'] = getCond(raw_items[i])
-		item['AuctionType'] = getAuctType(raw_items[i])
-		item['Price'] = getPrice(raw_items[i])
-		item['ShippingCost'] = getShipCost(raw_items[i])
+		param['Title'] = getTitle(raw_items[i])
+		param['Condition'] = getCond(raw_items[i])
+		param['AuctionType'] = getAuctType(raw_items[i])
+		param['Price'] = getPrice(raw_items[i])
+		param['ShippingCost'] = getShipCost(raw_items[i])
 
-		items.append(item)
+		parameters.append(param)
 
-	return items
+	return parameters
 
 
 ### makeUrl(keyword, sold, page_no) takes a keyword, a set of search filters, and the desired results page
@@ -231,28 +232,56 @@ def makeUrl(keyword, sold, page_no):
 
 
 ### getResultPages(keyword) takes a keyword and collects all the unique results pages for the keyword.
-# 0. Set the n_pages counter to 1
-# 1. Get the 1st page and store it in the pages list
-# 2. Get the 1st result from the 1st page and store it in prev res
-# 3. Begin the loop
-# 4. Increment the n_pages counter
-# 5. Get the next page and store it in a temporary variable
-# 6. Get the top result from the next page
-# 7. Compare the prev result to the next result
-# 8. If they are equal: break from the loop
-# 9. If they are not equal append the next page temporary variable to the pages list
-# 10. Repeat loop
+#
 
 def getResultPages(keyword):
 
+	results = []
+	i = 0
+	duplicate = 0
 
-	return [n_pages, raw_pages]
+	while duplicate != 1:
+		url = makeUrl(keyword,0,i+1)
+		content = getPage(url)
+		params = getParameters(getItems(content))
 
+		if i == 0: # Always append the 1st set of results
+			results.append(params)
+
+		elif results[i-1] == params: # Found a duplicate
+			duplicate = 1
+
+		else:
+			results.append(params) # If there's no duplicate, append the results
+
+		i+=1
+
+	return results
+
+
+### getPriceValues(results): extracts every price from the set of results and returns them in a list
+#
+
+def getPriceValues(results):
+
+	prices = []
+
+	for i in range(len(results)):
+		for k in range(len(results[i])):
+			prices.append(results[i][k]['Price'])
+
+	return prices
+
+
+def plotPriceHistogram(prices, keyword):
+	plt.hist(prices, bins=40)
+	plt.show()
 
 ### Main script
 
-url = makeUrl(keyword, 0, 1)
-content = getPage(url)
+results = getResultPages(keyword)
+prices = getPriceValues(results)
+plotPriceHistogram(prices, keyword)
 
 
 ### DEV NOTES
